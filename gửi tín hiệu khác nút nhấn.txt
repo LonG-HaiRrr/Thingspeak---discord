@@ -1,0 +1,66 @@
+Hướng dẫn gửi giá trị ADC từ ESP8266 lên Discord bằng Webhook (song song với ThingSpeak)
+Bạn có thể giữ nguyên code gửi dữ liệu lên ThingSpeak và bổ sung thêm đoạn gửi giá trị ADC lên Discord thông qua webhook rất đơn giản. Dưới đây là hướng dẫn chi tiết:
+
+1. Tạo Discord Webhook
+Vào kênh Discord mà bạn muốn hiển thị giá trị ADC.
+
+Chọn "Edit channel" > "Integrations" > "Webhooks" > "Create Webhook".
+
+Copy link Webhook (có dạng: https://discord.com/api/webhooks/...).
+
+2. Thêm thư viện HTTPClient (đã sẵn trên ESP8266)
+Với ESP8266, chỉ cần thêm #include <ESP8266HTTPClient.h>.
+
+3. Thêm biến Webhook Discord và code gửi ở cuối hàm loop
+Ví dụ bổ sung vào code của bạn như sau:
+
+cpp
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include "ThingSpeak.h"
+
+const char* discord_webhook_url = "https://discord.com/api/webhooks/ID/TOKEN"; // dán link webhook vào đây
+
+// ... giữ nguyên phần khai báo, setup và các đoạn code khác của bạn
+
+void sendADCtoDiscord(int adcValue) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(discord_webhook_url);
+    http.addHeader("Content-Type", "application/json");
+
+    String content = String("ADC Value: ") + String(adcValue);
+    String payload = "{\"content\": \"" + content + "\"}";
+
+    int httpResponseCode = http.POST(payload);
+    http.end();
+  }
+}
+
+// Trong loop, sau khi upload dữ liệu lên ThingSpeak, gọi hàm này:
+if (millis() - lastUploadTime >= uploadInterval) {
+  lastUploadTime = millis();
+  int adcValue = analogRead(A0);
+  // ... code ThingSpeak
+  sendADCtoDiscord(adcValue);  // <--- thêm dòng này!
+  // ... các đoạn code còn lại
+}
+Lưu ý:
+
+Webhook Discord không bảo vệ mật khẩu, không nên chia sẻ lên mạng.
+
+Không gửi quá dày (Discord rate limit khoảng 1 message/2–3s).
+
+Có thể định dạng nội dung hiển thị tùy ý.
+
+4. Kết quả
+Sau khi thêm đoạn trên vào code, mỗi lần bạn ghi giá trị lên ThingSpeak, giá trị ADC cũng sẽ đồng thời được gửi lên Discord, hiển thị trực tiếp trên kênh.
+
+Tổng kết nhanh các bước:
+Bước	Mô tả
+Tạo Webhook trên Discord	Thiết lập webhook và copy URL
+Thêm thư viện HTTP	Thêm #include <ESP8266HTTPClient.h>
+Gửi ADC lên Discord	Gọi hàm gửi POST lên webhook với nội dung chứa giá trị ADC
+Hiển thị trên Discord	ADC sẽ hiển thị tương tự dòng chat trong channel
+Bạn cần ví dụ hoàn chỉnh hay hỗ trợ phần nào nữa, chỉ cần hỏi thêm!
+Các tài liệu chính thống, mã nguồn mẫu và hướng dẫn thực tế đều xác nhận cách truyền thông này.
